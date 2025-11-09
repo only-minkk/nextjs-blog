@@ -1,0 +1,132 @@
+/* .header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  border-bottom: 1px solid rgb(229 231 235);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .header {
+    border-color: rgb(38 38 38);
+    background: rgba(10, 10, 10, 0.8);
+  }
+} */
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: white;
+  transition: transform 300ms;
+}
+
+.headerVisible {
+  transform: translateY(0);
+}
+
+.headerHidden {
+  transform: translateY(-100%);
+}
+
+.container {
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  height: 3.5rem;
+  max-width: 72rem;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.logo {
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  transition: transform 0.3s ease-in-out;
+  display: inline-block;
+}
+
+/* .logo:hover {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(0);
+  }
+} */
+
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.themeToggle {
+  border-radius: 0.5rem;
+  /* border: 1px solid rgb(64 64 64); */
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 200ms;
+}
+
+.themeToggle:hover {
+  background-color: rgb(229 229 229);
+}
+
+.githubLink {
+  border-radius: 0.5rem;
+  /* border: 1px solid rgb(64 64 64); */
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 200ms;
+}
+
+.githubLink:hover {
+  background-color: rgb(229 229 229);
+}
+
+/* Dark mode */
+:global(.dark) .header {
+  background: rgb(10 10 10);
+}
+
+:global(.dark) .themeToggle:hover {
+  background-color: rgb(38 38 38);
+}
+
+:global(.dark) .githubLink:hover {
+  background-color: rgb(38 38 38);
+}
+
+/* GitHub 아이콘 깜빡임 방지: CSS로 분기 */
+.githubIconLight {
+  display: block;
+}
+.githubIconDark {
+  display: none;
+}
+
+:global(.dark) .githubIconLight {
+  display: none;
+}
+:global(.dark) .githubIconDark {
+  display: block;
+}

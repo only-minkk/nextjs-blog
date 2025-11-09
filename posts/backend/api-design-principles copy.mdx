@@ -1,0 +1,30 @@
+---
+title: "RESTful API 설계 원칙"
+date: 2024-12-10
+desc: RESTful API를 설계할 때 지켜야 할 핵심 원칙과 베스트 프랙티스를 정리했습니다.
+thumbnail: /posts/nextjs_blog/setup/thumbnail.jpg
+---
+
+#### RESTful API란?
+
+REST(Representational State Transfer)는 웹의 장점을 활용하는 아키텍처 스타일입니다.
+
+#### 설계 원칙
+
+**리소스 중심 설계**: URL은 리소스를 표현해야 합니다.
+
+```
+GET    /api/users        # 사용자 목록
+GET    /api/users/1      # 특정 사용자
+POST   /api/users        # 사용자 생성
+PUT    /api/users/1      # 사용자 수정
+DELETE /api/users/1      # 사용자 삭제
+```
+
+**HTTP 메서드 활용**: GET, POST, PUT, DELETE를 적절히 사용합니다.
+
+**상태 코드 활용**: 200, 201, 400, 404 등 적절한 상태 코드를 반환합니다.
+
+**버전 관리**: API 버전을 URL에 포함시킵니다 (예: /api/v1/users).
+
+이러한 원칙을 따르면 일관성 있고 사용하기 쉬운 API를 만들 수 있습니다.

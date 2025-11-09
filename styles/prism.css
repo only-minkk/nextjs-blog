@@ -1,0 +1,14 @@
+@import "prismjs/themes/prism-tomorrow.css";
+
+pre[class*="language-"] {
+  scrollbar-width: thin;
+}
+
+pre[class*="language-"]::-webkit-scrollbar {
+  height: 6px;
+}
+
+pre[class*="language-"]::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.5);
+  border-radius: 9999px;
+}

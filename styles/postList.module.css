@@ -1,0 +1,64 @@
+.stage {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  perspective: 1200px; /* ✅ 컨테이너에서 원근만 한 번 */
+  background: radial-gradient(1200px at 70% 30%, #0b1220, #06080f);
+}
+
+.scroll {
+  width: min(680px, 92vw);
+  height: 80vh;
+  overflow: auto;
+  padding: 28vh 0;
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar {
+  display: none;
+}
+.scroll {
+  scroll-snap-type: y mandatory;
+}
+
+.card {
+  --r: 20px;
+  transform-origin: right center; /* ✅ 오른쪽 축 고정 */
+  transform-style: preserve-3d; /* ✅ 3D 변환 유지 */
+  border-radius: var(--r);
+  background: #0f172a;
+  color: #e5e7eb;
+  margin: 22px 0;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  transition: transform 0.12s linear, opacity 0.12s linear;
+  will-change: transform, opacity;
+  scroll-snap-align: center;
+}
+
+.thumb {
+  height: 110px;
+  display: grid;
+  place-items: center;
+  border-top-left-radius: var(--r);
+  border-bottom-left-radius: var(--r);
+  font-weight: 800;
+  font-size: 28px;
+  background: linear-gradient(135deg, #2563eb, #60a5fa);
+  color: #fff;
+}
+.meta {
+  padding: 18px 20px;
+}
+.meta h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.meta p {
+  margin: 0;
+  opacity: 0.7;
+  font-size: 14px;
+  line-height: 1.35;
+}
