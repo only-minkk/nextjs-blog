@@ -1,12 +1,12 @@
-import type { MDXRemoteProps } from "next-mdx-remote";
 import type { ComponentProps } from "react";
+import type { MDXComponents } from "mdx/types";
 import { createElement } from "react";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypePrismPlus from "rehype-prism-plus";
 
-export const mdxOptions: MDXRemoteProps["options"] = {
+export const mdxOptions = {
   mdxOptions: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [
@@ -30,15 +30,17 @@ export const mdxOptions: MDXRemoteProps["options"] = {
       rehypePrismPlus,
     ],
   },
-};
+} as const;
 
-export const mdxComponents: MDXRemoteProps["components"] = {
+export const mdxComponents: MDXComponents = {
   pre: (props) =>
     createElement(
       "pre",
       {
         ...props,
-        className: `not-prose overflow-x-auto rounded-xl border border-neutral-200 bg-neutral-950/95 p-4 text-sm text-neutral-100 shadow-sm dark:border-neutral-700 ${props.className ?? ""}`,
+        className: `not-prose overflow-x-auto rounded-xl border border-neutral-200 bg-neutral-950/95 p-4 text-sm text-neutral-100 shadow-sm dark:border-neutral-700 ${
+          props.className ?? ""
+        }`,
       },
       props.children
     ),
