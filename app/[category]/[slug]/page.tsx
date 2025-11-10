@@ -1,21 +1,100 @@
-import { getPost } from "@/lib/posts";
+import type { Metadata } from "next";
 import Image from "next/image";
-import { notFound } from "next/navigation";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
-import { mdxComponents, mdxOptions } from "@/lib/mdxOptions";
-import { extractHeadings } from "@/lib/extractHeadings";
 import PostToc from "@/components/PostToc";
 import GiscusComments from "@/components/GiscusComments";
+import { extractHeadings } from "@/lib/extractHeadings";
+import { mdxComponents, mdxOptions } from "@/lib/mdxOptions";
+import { getPost } from "@/lib/posts";
+import { siteMetadata } from "@/lib/siteMetadata";
 
-type Props = {
-  params: Promise<{ category: string; slug: string }>;
+type Params = {
+  category: string;
+  slug: string;
 };
 
-export default async function PostPage({ params }: Props) {
-  const { category, slug } = await params;
-  const decodedCategory = decodeURIComponent(category);
-  const decodedSlug = decodeURIComponent(slug);
+const toAbsoluteUrl = (path: string) => {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+  return new URL(path, siteMetadata.url).toString();
+};
+
+type PageProps = {
+  params: Promise<Params>;
+};
+
+export const generateMetadata = async ({
+  params,
+}: PageProps): Promise<Metadata> => {
+  const resolvedParams = await params;
+  const decodedCategory = decodeURIComponent(resolvedParams.category);
+  const decodedSlug = decodeURIComponent(resolvedParams.slug);
+  const post = getPost(decodedCategory, decodedSlug);
+
+  if (!post) {
+    return {
+      title: "게시글을 찾을 수 없습니다",
+      description: siteMetadata.description,
+      alternates: {
+        canonical: `/${resolvedParams.category}/${resolvedParams.slug}`,
+      },
+    };
+  }
+
+  const title = post.title;
+  const description = post.desc ?? siteMetadata.description;
+  const canonicalPath = `/${resolvedParams.category}/${resolvedParams.slug}`;
+  const publishedTime = new Date(post.date).toISOString();
+  const imageUrl = post.thumbnail
+    ? toAbsoluteUrl(post.thumbnail)
+    : toAbsoluteUrl(siteMetadata.defaultOgImage);
+
+  const keywords = Array.from(
+    new Set([...(siteMetadata.keywords ?? []), post.category])
+  );
+
+  return {
+    title,
+    description,
+    keywords,
+    alternates: {
+      canonical: canonicalPath,
+    },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url: canonicalPath,
+      siteName: siteMetadata.siteName,
+      locale: siteMetadata.locale,
+      publishedTime,
+      authors: [siteMetadata.author],
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: siteMetadata.twitter.card,
+      site: siteMetadata.twitter.site,
+      title,
+      description,
+      images: [imageUrl],
+    },
+  };
+};
+
+export default async function PostPage({ params }: PageProps) {
+  const resolvedParams = await params;
+  const decodedCategory = decodeURIComponent(resolvedParams.category);
+  const decodedSlug = decodeURIComponent(resolvedParams.slug);
 
   const post = getPost(decodedCategory, decodedSlug);
 
