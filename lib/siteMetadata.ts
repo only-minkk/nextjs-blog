@@ -1,7 +1,7 @@
 const fallbackUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const siteMetadata = {
-  title: "OnlyMinkk",
+  title: "OnlyMinkk Blog",
   description: "기술 블로그",
   author: "OnlyMinkk",
   siteName: "OnlyMinkk Blog",
