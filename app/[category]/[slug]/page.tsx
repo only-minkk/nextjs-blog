@@ -9,6 +9,7 @@ import { extractHeadings } from "@/lib/extractHeadings";
 import { mdxComponents, mdxOptions } from "@/lib/mdxOptions";
 import { getPost } from "@/lib/posts";
 import { siteMetadata } from "@/lib/siteMetadata";
+import SplashCursor from "@/components/SplashCursor";
 
 type Params = {
   category: string;
@@ -114,6 +115,7 @@ export default async function PostPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-foreground)] transition-colors">
+      <SplashCursor />
       <div className="mx-auto w-full max-w-[700px] px-6 py-24">
         <article className="w-full">
           {/* 헤더 */}

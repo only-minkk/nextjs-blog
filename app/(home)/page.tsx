@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import { getAllPosts, getNestedCategories } from "@/lib/posts";
 import RingSelectorWrapper from "@/components/RingSelectorWrapper";
-import ParticleCursor from "@/components/SmokeCursor";
+import SplashCursor from "@/components/SplashCursor";
 import { siteMetadata } from "@/lib/siteMetadata";
 
 export const metadata: Metadata = {
@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div>
       <main>
-        <ParticleCursor />
+        <SplashCursor />
         <RingSelectorWrapper
           initialPosts={initialPosts}
           categories={categories}
