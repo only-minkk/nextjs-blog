@@ -727,7 +727,7 @@
 /* 선택 강조 (왼쪽 중앙 근처) */
 .card--hot {
   filter: brightness(1.18) saturate(1.12);
-  border: 5px solid #97adc9;
+  border: 3px solid rgba(91, 162, 255, 0.6); /* #97adc9 with 60% opacity */
 }
 
 /* 왼쪽 중앙 마커(선택 지점) */
