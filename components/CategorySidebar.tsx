@@ -30,6 +30,20 @@ export default function CategorySidebar({
     });
   };
 
+  const handleCategoryClick = (node: CategoryNode) => {
+    // 카테고리 선택
+    onCategorySelect(node.path);
+
+    // 하위 카테고리가 있으면 자동으로 열기
+    if (node.children.length > 0) {
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        next.add(node.path);
+        return next;
+      });
+    }
+  };
+
   const renderCategory = (node: CategoryNode, depth: number = 0) => {
     const isExpanded = expandedPaths.has(node.path);
     const hasChildren = node.children.length > 0;
@@ -44,7 +58,7 @@ export default function CategorySidebar({
           style={{
             paddingLeft: `${12 + depth * 20}px`,
           }}
-          onClick={() => onCategorySelect(node.path)}
+          onClick={() => handleCategoryClick(node)}
         >
           {hasChildren && (
             <button
