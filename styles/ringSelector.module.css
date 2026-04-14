@@ -126,11 +126,11 @@
     --scale-factor: 0.8;
   }
 
-  /* 작은 화면 링: 세로 높이를 명시해 반원 영역이 잘리지 않게 함 */
+  /* 작은 화면 링: 뷰포트를 최대한 써서 아래쪽 카드까지 보이게 */
   .frame:not(.frameListMode) {
-    height: min(640px, calc(100dvh - 5.5rem));
-    min-height: min(560px, 65vh);
-    max-height: min(640px, calc(100dvh - 5.5rem));
+    height: min(720px, calc(100dvh - 3.25rem));
+    min-height: min(600px, calc(100dvh - 3.5rem));
+    max-height: min(720px, calc(100dvh - 3.25rem));
     margin-top: 0;
     margin-bottom: 0;
     flex: 0 1 auto;
@@ -517,25 +517,25 @@
 @media (max-width: 700px) {
   .ringContainer {
     width: 100%;
-    min-height: min(500px, 60vh);
+    min-height: 0;
     flex: 1 1 auto;
     order: 1;
     margin-top: 0;
     padding-top: 0;
     overflow: visible; /* 카드가 컨테이너 밖으로 나가도 보이게 */
-    /* 위아래 가장자리 페이드아웃 효과 유지 */
+    /* 아래쪽은 거의 페이드하지 않아 하단 카드가 잘 보이게 */
     mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 10%,
-      black 90%,
+      black 6%,
+      black 99%,
       transparent 100%
     );
     -webkit-mask-image: linear-gradient(
       to bottom,
       transparent 0%,
-      black 10%,
-      black 90%,
+      black 6%,
+      black 99%,
       transparent 100%
     );
   }
@@ -846,9 +846,8 @@
 
 @media (max-width: 700px) {
   .axis {
-    /* 작은 화면: 선택된 카드(180도)가 화면 중앙에 오도록 조정 */
-    /* 선택된 카드는 180도 위치 = 원의 중심에서 왼쪽으로 반지름만큼 */
-    /* 카드가 중앙에 오려면: 원의 중심이 중앙 + 반지름 위치 */
+    /* 작은 화면: 축을 살짝 위로 두어 아래 반원·하단 카드가 덜 잘리게 */
+    top: 44%;
     left: calc(80% + var(--R));
     right: auto;
     transform: translate(-50%, -50%);
