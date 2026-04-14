@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "@/styles/ringSelector.module.css";
 import type { CategoryNode, PostMetadata } from "@/lib/posts";
 import CategorySidebar from "./CategorySidebar";
 import Image from "next/image";
+
+const VIEW_STORAGE_KEY = "blog-home-view-mode";
 
 type RingSelectorProps<T = string> = {
   items: T[];
@@ -32,6 +35,8 @@ export default function RingSelector<T = string>({
   const axisRef = useRef<HTMLDivElement | null>(null);
   const cardRefs = useRef<HTMLButtonElement[]>([]);
   const counterRef = useRef<HTMLDivElement | null>(null);
+  const [listView, setListView] = useState(false);
+  const [viewHydrated, setViewHydrated] = useState(false);
 
   const LABELS = useMemo(() => {
     return items.map((item, idx) => {
@@ -41,6 +46,26 @@ export default function RingSelector<T = string>({
     });
   }, [items, getLabel]);
   const STEP = 360 / Math.max(1, LABELS.length);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && localStorage.getItem(VIEW_STORAGE_KEY) === "list") {
+        setListView(true);
+      }
+    } catch {
+      /* ignore */
+    }
+    setViewHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!viewHydrated) return;
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, listView ? "list" : "ring");
+    } catch {
+      /* ignore */
+    }
+  }, [listView, viewHydrated]);
 
   // 상태들 (ref로 유지)
   const rotationRef = useRef<number>(180); // 왼쪽 중앙 = 180°
@@ -66,6 +91,8 @@ export default function RingSelector<T = string>({
 
   // 렌더 루프
   useEffect(() => {
+    if (listView) return;
+
     const frame = frameRef.current;
     if (!frame) return;
 
@@ -91,6 +118,7 @@ export default function RingSelector<T = string>({
 
       for (let i = 0; i < cards.length; i++) {
         const el = cards[i];
+        if (!el) continue;
         // 반시계 방향으로 배치 (각도를 음수로)
         const angle = wrapDeg(-i * STEP + rotation);
         const rad = (angle * Math.PI) / 180;
@@ -153,10 +181,12 @@ export default function RingSelector<T = string>({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [LABELS, STEP, onChange, radius, items]);
+  }, [LABELS, STEP, onChange, radius, items, listView]);
 
   // 입력 바인딩 (링 컨테이너 내에서만 동작)
   useEffect(() => {
+    if (listView) return;
+
     const ringContainer = axisRef.current?.parentElement;
     if (!ringContainer) return;
 
@@ -241,7 +271,22 @@ export default function RingSelector<T = string>({
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [LABELS.length]);
+  }, [LABELS.length, listView]);
+
+  const postHref = (post: PostMetadata) =>
+    post.category
+      ? `/${encodeURIComponent(post.category)}/${encodeURIComponent(post.slug)}`
+      : `/${encodeURIComponent(post.slug)}`;
+
+  const isPostMetadata = (item: unknown): item is PostMetadata => {
+    return (
+      typeof item === "object" &&
+      item !== null &&
+      "title" in item &&
+      "date" in item &&
+      "slug" in item
+    );
+  };
 
   // 카드 ref 수집 및 즉시 위치 설정
   const setCardRef = (el: HTMLButtonElement | null, idx: number) => {
@@ -285,10 +330,10 @@ export default function RingSelector<T = string>({
       <div className={styles.marker} aria-hidden="true" />
       <section
         ref={frameRef}
-        className={styles.frame}
-        role="listbox"
-        aria-label="3D 원형 카드 선택"
-        tabIndex={0}
+        className={`${styles.frame} ${listView ? styles.frameListMode : ""}`}
+        role={listView ? undefined : "listbox"}
+        aria-label={listView ? "게시글 목록" : "3D 원형 카드 선택"}
+        tabIndex={listView ? -1 : 0}
       >
         {categories.length > 0 && (
           <CategorySidebar
@@ -297,31 +342,142 @@ export default function RingSelector<T = string>({
             onCategorySelect={onCategorySelect || (() => {})}
           />
         )}
-        <div
-          className={styles.counter}
-          ref={counterRef}
-          aria-live="polite"
-          style={
-            {
-              "--progress": items.length > 0 ? 1 / items.length : 0,
-            } as React.CSSProperties & { "--progress": number }
-          }
-        >
-          {items.length > 0 ? `1 / ${items.length}` : "0 / 0"}
+        <div className={styles.frameMain}>
+        <div className={styles.counterRow}>
+          <div
+            className={styles.counter}
+            ref={counterRef}
+            aria-live="polite"
+            style={
+              {
+                "--progress": items.length > 0 ? 1 / items.length : 0,
+              } as React.CSSProperties & { "--progress": number }
+            }
+          >
+            {items.length > 0 ? `1 / ${items.length}` : "0 / 0"}
+          </div>
+          <button
+            type="button"
+            className={styles.viewToggle}
+            onClick={() => setListView((v) => !v)}
+            aria-label={listView ? "링 선택 보기" : "목록으로 보기"}
+            title={listView ? "링 선택 보기" : "목록으로 보기"}
+          >
+            {listView ? (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <path d="M12 3a9 9 0 1 0 9 9" />
+                <path d="M12 3v6l4-4" />
+                <circle cx="12" cy="13" r="1.5" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+            )}
+          </button>
         </div>
+        {listView ? (
+          <div className={styles.listPanel}>
+            {items.length === 0 ? (
+              <p className={styles.listEmpty}>표시할 글이 없습니다.</p>
+            ) : (
+              items.map((item, idx) => {
+                const post = isPostMetadata(item) ? item : null;
+                if (!post) {
+                  return (
+                    <article
+                      key={idx}
+                      className={styles.listArticle}
+                    >
+                      <span className={styles.listFallback}>
+                        {LABELS[idx] ?? String(item)}
+                      </span>
+                    </article>
+                  );
+                }
+                return (
+                  <article
+                    key={`${post.category}/${post.slug}`}
+                    className={styles.listArticle}
+                  >
+                    <Link href={postHref(post)} className={styles.listLink}>
+                      {post.thumbnail ? (
+                        <div className={styles.listThumb}>
+                          <Image
+                            src={post.thumbnail}
+                            alt={post.title}
+                            fill
+                            className={styles.listThumbImage}
+                            sizes="120px"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={styles.listThumbPlaceholder}
+                          aria-hidden
+                        >
+                          {post.title.charAt(0)}
+                        </div>
+                      )}
+                      <div className={styles.listBody}>
+                        <div className={styles.listMeta}>
+                          {post.category ? (
+                            <span className={styles.listCategory}>
+                              {post.category}
+                            </span>
+                          ) : null}
+                          {post.category ? (
+                            <span className={styles.listMetaSep}>·</span>
+                          ) : null}
+                          <time
+                            dateTime={String(post.date)}
+                            className={styles.listDate}
+                          >
+                            {new Date(post.date).toLocaleString("ko-KR", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </time>
+                        </div>
+                        <h3 className={styles.listTitle}>{post.title}</h3>
+                        {post.desc ? (
+                          <p className={styles.listDesc}>{post.desc}</p>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </article>
+                );
+              })
+            )}
+          </div>
+        ) : (
         <div className={styles.ringContainer}>
           <div className={styles.axis} ref={axisRef}>
             {items.map((item, idx) => {
-              const isPostMetadata = (item: unknown): item is PostMetadata => {
-                return (
-                  typeof item === "object" &&
-                  item !== null &&
-                  "title" in item &&
-                  "date" in item &&
-                  "slug" in item
-                );
-              };
-
               const post = isPostMetadata(item) ? item : null;
 
               return (
@@ -334,15 +490,7 @@ export default function RingSelector<T = string>({
                   onClick={() => {
                     // 선택된 카드를 클릭한 경우 페이지로 이동
                     if (selectedIndexRef.current === idx && post) {
-                      const encodedSlug = encodeURIComponent(post.slug);
-                      if (post.category) {
-                        const encodedCategory = encodeURIComponent(
-                          post.category
-                        );
-                        router.push(`/${encodedCategory}/${encodedSlug}`);
-                      } else {
-                        router.push(`/${encodedSlug}`);
-                      }
+                      router.push(postHref(post));
                     } else {
                       // 선택되지 않은 카드를 클릭한 경우 선택 인덱스만 변경
                       selectedIndexRef.current = idx;
@@ -413,6 +561,8 @@ export default function RingSelector<T = string>({
               );
             })}
           </div>
+        </div>
+        )}
         </div>
       </section>
     </main>

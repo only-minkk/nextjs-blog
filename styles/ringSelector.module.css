@@ -41,10 +41,24 @@
   perspective: 1200px; /* 3D 원근 */
   touch-action: none; /* 드래그 스크롤 충돌 방지 */
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 0;
   flex-direction: row;
+}
+
+.frame.frameListMode {
+  touch-action: auto;
+}
+
+.frameMain {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  position: relative;
 }
 
 /* 카테고리(200px) + 카드 영역(최소 400px) = 약 600px부터 겹침 시작 */
@@ -413,7 +427,7 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: min(640px, 80vh);
+  min-height: 0;
   overflow: visible; /* 카드가 컨테이너 밖으로 나가도 보이게 */
   /* 위아래 가장자리 페이드아웃 효과 */
   mask-image: linear-gradient(
@@ -471,18 +485,55 @@
   height: 1px;
 }
 
-/* 카운터: 카드 우측에 배치 */
-/* frame 내부, ringContainer 밖에 위치 */
+/* 카운터 + 목록 토글: 메인 열 상단(링·목록과 겹치지 않음) */
+.counterRow {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 4px 10px 0;
+  z-index: 10;
+}
+
+.viewToggle {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 1);
+  color: #1e293b;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.viewToggle:hover {
+  background: #f1f5f9;
+}
+
+:global(.dark) .viewToggle {
+  background: rgba(15, 23, 42, 1);
+  color: #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+:global(.dark) .viewToggle:hover {
+  background: #1e293b;
+}
+
+/* 카운터: counterRow 안에서 배치 */
 .counter {
-  position: absolute;
-  top: 50%;
-  right: 1%; /* frame의 오른쪽에서 10% 위치 (카드 우측) */
-  transform: translateY(-50%);
+  position: relative;
   font-size: 18px;
   font-weight: 700;
   color: #1e293b;
   pointer-events: none;
-  z-index: 2000;
   white-space: nowrap;
   padding: 10px 16px;
   background: rgba(255, 255, 255, 1);
@@ -533,12 +584,190 @@
 
 @media (max-width: 700px) {
   .counter {
-    /* 작은 화면: ringContainer와 함께 반응형으로 조정 */
-    right: 1%;
-    top: 65%; /* 아래로 조금 이동 (50% -> 55%) */
-    transform: translateY(-50%); /* 기존 transform 유지 */
-    /* font-size: 16px; */
     padding: 8px 12px;
+    font-size: 16px;
+  }
+
+  .viewToggle {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* 목록 보기 패널 */
+.listPanel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 4px 16px 4px;
+  margin-right: 0;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.listEmpty {
+  margin: 0;
+  padding: 24px 16px;
+  text-align: center;
+  color: #64748b;
+  font-size: 15px;
+}
+
+:global(.dark) .listEmpty {
+  color: #94a3b8;
+}
+
+.listArticle {
+  margin-bottom: 12px;
+}
+
+.listArticle:last-child {
+  margin-bottom: 0;
+}
+
+.listLink {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1e293b;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.listLink:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+:global(.dark) .listLink {
+  background: #0f172a;
+  color: #e5e7eb;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+:global(.dark) .listLink:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.listThumb {
+  position: relative;
+  width: 100px;
+  min-width: 100px;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.listThumbImage {
+  object-fit: cover;
+}
+
+.listThumbPlaceholder {
+  width: 100px;
+  min-width: 100px;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  color: #f8fafc;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.listBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.listMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+:global(.dark) .listMeta {
+  color: #94a3b8;
+}
+
+.listCategory {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listMetaSep {
+  opacity: 0.6;
+}
+
+.listDate {
+  font-variant-numeric: tabular-nums;
+}
+
+.listTitle {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.listDesc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #475569;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+:global(.dark) .listDesc {
+  color: #cbd5e1;
+}
+
+.listFallback {
+  font-size: 14px;
+  color: #64748b;
+}
+
+@media (max-width: 700px) {
+  .listPanel {
+    padding: 4px 4px 20px 4px;
+  }
+
+  .listThumb,
+  .listThumbPlaceholder {
+    width: 80px;
+    min-width: 80px;
+  }
+
+  .listLink {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .listTitle {
+    font-size: 15px;
   }
 }
 
