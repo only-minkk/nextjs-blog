@@ -322,14 +322,13 @@ export default function RingSelector<T = string>({
   };
 
   return (
-    <main
-      className={`${styles.page} ${listView ? styles.pageListMode : ""}`}
-    >
+    <main className={styles.page}>
       {/* {title ? <h1 className={styles.title}>{title}</h1> : null} */}
       {/* <div ref={selectedRef} className={styles.selected} aria-live="polite">
         선택: (없음)
       </div> */}
       <div className={styles.marker} aria-hidden="true" />
+      <div className={styles.stage}>
       <section
         ref={frameRef}
         className={`${styles.frame} ${listView ? styles.frameListMode : ""}`}
@@ -576,6 +575,7 @@ export default function RingSelector<T = string>({
         )}
         </div>
       </section>
+      </div>
     </main>
   );
 }
