@@ -3,11 +3,24 @@
 }
 
 .page {
-  display: grid;
-  place-items: center;
-  gap: 14px;
-  padding: 24px;
-  padding-top: calc(3.5rem + 24px); /* 헤더 높이(3.5rem) + 여백 */
+  box-sizing: border-box;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: calc(3.5rem + 12px) 24px 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  position: relative;
+}
+
+/* 목록 모드: 프레임이 남은 높이를 채우고 내부 목록만 스크롤 */
+.pageListMode {
+  justify-content: flex-start;
 }
 
 .title {
@@ -33,6 +46,9 @@
   top: 15%;
   position: relative;
   width: min(920px, 92vw);
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(640px, 100%);
   height: min(640px, 80vh);
   border-radius: 0;
   overflow: hidden; /* 반원만 보임 */
@@ -49,6 +65,14 @@
 
 .frame.frameListMode {
   touch-action: auto;
+  top: 0;
+  flex: 1 1 auto;
+  align-self: center;
+  width: min(920px, 92vw);
+  max-width: min(920px, 92vw);
+  height: auto;
+  max-height: none;
+  min-height: 0;
 }
 
 .frameMain {
@@ -63,6 +87,10 @@
 
 /* 카테고리(200px) + 카드 영역(최소 400px) = 약 600px부터 겹침 시작 */
 @media (max-width: 700px) {
+  .page {
+    padding: calc(3.5rem + 8px) 16px 16px;
+  }
+
   .frame {
     top: 0%;
     flex-direction: column;
@@ -74,6 +102,14 @@
     --CardH: 240px; /* 높이를 조금 더 늘려서 내용이 잘리지 않도록 */
     /* 작은 화면 스케일 팩터 (240/300 = 0.8) */
     --scale-factor: 0.8;
+  }
+
+  /* 목록 모드: 뷰포트 안에 맞추고 본문 스크롤 방지 */
+  .frame.frameListMode {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    max-height: none;
   }
 
   /* 작은 화면에서 카드 내부 요소 크기를 비율로 조정 */
@@ -580,6 +616,11 @@
     rgba(255, 255, 255, 0.1) calc(var(--progress, 0) * 360deg),
     rgba(255, 255, 255, 0.1) 360deg
   );
+}
+
+/* 목록 모드: 진행 링 없이 총 개수만 */
+.counterTotal::before {
+  display: none;
 }
 
 @media (max-width: 700px) {

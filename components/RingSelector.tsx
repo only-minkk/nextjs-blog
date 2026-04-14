@@ -322,7 +322,9 @@ export default function RingSelector<T = string>({
   };
 
   return (
-    <main className={styles.page}>
+    <main
+      className={`${styles.page} ${listView ? styles.pageListMode : ""}`}
+    >
       {/* {title ? <h1 className={styles.title}>{title}</h1> : null} */}
       {/* <div ref={selectedRef} className={styles.selected} aria-live="polite">
         선택: (없음)
@@ -344,18 +346,27 @@ export default function RingSelector<T = string>({
         )}
         <div className={styles.frameMain}>
         <div className={styles.counterRow}>
-          <div
-            className={styles.counter}
-            ref={counterRef}
-            aria-live="polite"
-            style={
-              {
-                "--progress": items.length > 0 ? 1 / items.length : 0,
-              } as React.CSSProperties & { "--progress": number }
-            }
-          >
-            {items.length > 0 ? `1 / ${items.length}` : "0 / 0"}
-          </div>
+          {listView ? (
+            <div
+              className={`${styles.counter} ${styles.counterTotal}`}
+              aria-live="polite"
+            >
+              {items.length > 0 ? `총 ${items.length}개` : "글 없음"}
+            </div>
+          ) : (
+            <div
+              className={styles.counter}
+              ref={counterRef}
+              aria-live="polite"
+              style={
+                {
+                  "--progress": items.length > 0 ? 1 / items.length : 0,
+                } as React.CSSProperties & { "--progress": number }
+              }
+            >
+              {items.length > 0 ? `1 / ${items.length}` : "0 / 0"}
+            </div>
+          )}
           <button
             type="button"
             className={styles.viewToggle}
