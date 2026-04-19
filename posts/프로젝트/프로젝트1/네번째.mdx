@@ -1,0 +1,67 @@
+---
+title: "어제는 됐고 오늘은 안 되는.."
+date: "2026-04-19T16:05:19+09:00"
+desc: 어제는 잘 돌아가던 코드가, 며칠 뒤 컴퓨터를 켜고 실행하니 갑자기 에러를 뱉는..
+---
+
+## 1. 문제 상황: 갑자기 발생한 마이그레이션 에러
+
+며칠 만에 작업을 재개하며 테이블 수정을 위해 스키마를 고치고 `migrate` 명령어를 실행했다. 그런데 평소 잘 되던 마이그레이션이 아래와 같은 에러를 뱉으며 멈췄다.
+
+```bash
+Loaded Prisma config from prisma.config.ts.
+Prisma schema loaded from prisma\schema.prisma.
+
+Error: The datasource.url property is required in your Prisma config file when using prisma migrate dev.
+```
+
+**"datasource.url이 없다?"**
+이상했다. 스키마를 처음 만들고 마이그레이션 할 때는 분명히 성공했기 때문이다. 현재 내 설정은 `prisma.config.ts`에서 `url`을 관리하고 있는데, 여기서 값을 읽지 못하고 있다는 신호였다.
+
+---
+
+## 2. 해결 방법: 명시적인 환경 변수 로드
+
+혹시나 하는 마음에 `prisma.config.ts` 파일 최상단에 환경 변수를 강제로 로드하는 코드를 추가해 보았다.
+
+```typescript
+// prisma.config.ts
+import 'dotenv/config'; // 💡 추가
+import { defineConfig } from '@prisma/config';
+
+export default defineConfig({
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
+  // ...
+});
+```
+
+**결과는 성공.** `dotenv`를 추가하니 마이그레이션이 정상적으로 진행되었다.
+
+---
+
+## 3. 원인 추론: 그때는 왜 됐고, 지금은 왜 안 됐을까?
+
+문제는 해결했지만, **"왜 처음에는 `dotenv` 없이도 됐었는가?"**에 대한 의문이 남았다. 기억을 더듬어 추론해 본 결과는 다음과 같다.
+
+
+
+### **사건의 재구성**
+1. **과거(Prisma 5 방식):** 처음에는 전통적인 방식으로 `schema.prisma`에 직접 `url = env("DATABASE_URL")`을 넣고 실행했었다. 이때 Prisma CLI는 내장된 엔진을 통해 자동으로 `.env` 파일을 읽어 터미널 세션 메모리에 환경 변수를 주입했다.
+2. **과도기:** 이후 런타임 에러를 잡기 위해 Prisma 7의 **Driver Adapter** 방식으로 전환했다. 이때 터미널 창을 끄지 않고 바로 실행했는데, **이전 명령어가 터미널 메모리에 남겨둔 환경 변수**를 Prisma 7이 그대로 물려받아 실행됐던 것이다.
+3. **현재:** 며칠이 지나 컴퓨터를 재부팅했고, 휘발성인 터미널 메모리는 깨끗하게 비워졌다. `prisma.config.ts`는 순수 TypeScript 파일이라 스스로 `.env`를 읽는 기능이 없으므로, 비어있는 `process.env`를 참조하다가 에러가 난 것이다.
+
+---
+
+## 4. 고찰: "기억" 대신 "확신"을 코드에 심기
+
+이번 에러를 통해 개발 환경의 재현성이 얼마나 중요한지 다시금 깨달았다. 사실 이 추론도 틀렸을 수도 있다. 확신할 수 없다.
+
+이전 작업의 흔적 같은 '외부 요인'에 의존하는 코드는 언제든 배신할 수 있다. 환경의 변덕에 계속해서 휘둘린다.
+
+단순히 지금 해결되도록 에러를 고치는 게 아니라 이러한 외부 요인들도 항상 고려하며 코드가 실행되는 매 순간 일시작인 기억에 의존하지 않고 스스로 잘 구축이 되게 해야한다.
+
+문제에 집중하는 것도 좋지만 환경이 바뀌어도 변함없이 동작하는가를 항상 염두해 두어야 한다.
+
+
