@@ -170,7 +170,7 @@ ConfigModule.forRoot({
 
 예를 들면 다음과 같은 값들이 있다.
 
-```env
+```
 PORT=5000
 NODE_ENV=development
 DATABASE_URL=postgresql://...
@@ -313,7 +313,7 @@ production  → 운영 환경
 
 만약 `.env`에 아래처럼 잘못된 값이 들어가면 허용되지 않는다.
 
-```env
+```
 NODE_ENV=test-server
 ```
 
@@ -335,7 +335,7 @@ DATABASE_URL: joi.string().required()
 
 실제 운영 주소는 공개하면 안 되기 때문에 예시로만 표현하면 다음과 같은 형태다.
 
-```env
+```
 DATABASE_URL=postgresql://...
 ```
 
@@ -393,7 +393,7 @@ JWT_EXPIRES_IN: joi.string().default('1h')
 
 예를 들어 다음과 같은 값들을 사용할 수 있다.
 
-```env
+```
 JWT_EXPIRES_IN=1h
 JWT_EXPIRES_IN=30m
 JWT_EXPIRES_IN=7d
