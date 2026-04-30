@@ -1,0 +1,1020 @@
+---
+title: "`CreateUserDto`와 `UpdateUserDto`로 이해한 요청 데이터 검증 흐름"
+date: "2026-04-30T17:30:00+09:00"
+desc: "NestJS에서 DTO와 ValidationPipe를 통해 프론트에서 들어오는 사용자 데이터를 검증하는 흐름을 정리한 글"
+---
+
+이전 글에서는 `UsersService`를 기준으로 사용자 생성과 조회 로직을 정리했다.
+
+이번 글에서는 그보다 앞단에 있는 DTO를 정리해보려고 한다.
+
+`UsersController`에는 이런 코드가 있었다.
+
+```ts
+@Post()
+create(@Body() createUserDto: CreateUserDto) {
+  return this.usersService.create(createUserDto);
+}
+```
+
+여기서 `@Body()`로 들어오는 요청 데이터가 정말 올바른 형식인지 검사하는 기준이 바로 `CreateUserDto`다.
+
+이번 글의 핵심은 다음과 같다.
+
+```txt
+DTO는 프론트에서 백엔드로 들어오는 데이터의 규칙이다.
+```
+
+운영 중인 서비스 코드이기 때문에 실제 코드를 그대로 공개하기보다는, 핵심 구조와 검증 흐름을 중심으로 정리했다.
+
+---
+
+## 1. DTO는 왜 필요할까?
+
+프론트에서 회원 생성 요청을 보낸다고 해보자.
+
+```json
+{
+  "email": "test@example.com",
+  "password": "password1234",
+  "name": "사용자",
+  "phoneNumber": "01012345678"
+}
+```
+
+백엔드는 이 데이터를 그대로 믿으면 안 된다.
+
+사용자는 의도했든 의도하지 않았든 잘못된 값을 보낼 수 있다.
+
+예를 들어 이런 요청이 들어올 수도 있다.
+
+```json
+{
+  "email": "이메일아님",
+  "password": 1234,
+  "name": "",
+  "role": "ADMIN"
+}
+```
+
+이런 데이터가 검증 없이 Service까지 들어가면 문제가 생길 수 있다.
+
+```txt
+email은 이메일 형식이 아니다.
+password가 문자열이 아니라 숫자다.
+name이 비어 있다.
+role은 클라이언트가 마음대로 보내면 안 되는 값이다.
+```
+
+그래서 DTO가 필요하다.
+
+DTO는 백엔드 입장에서 다음과 같은 규칙을 정하는 파일이다.
+
+```txt
+회원 생성 요청에는 어떤 필드를 받을 것인가?
+각 필드는 어떤 타입이어야 하는가?
+필수값과 선택값은 무엇인가?
+정해진 enum 값만 받아야 하는 필드는 무엇인가?
+DTO에 없는 필드가 들어오면 어떻게 할 것인가?
+```
+
+---
+
+## 2. ValidationPipe와 DTO의 연결
+
+DTO만 만든다고 자동으로 검증이 되는 것은 아니다.
+
+이전에 `main.ts`에서 전역으로 `ValidationPipe`를 설정했다.
+
+```ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+);
+```
+
+이 설정 덕분에 요청이 Controller에 도착하기 전에 DTO 규칙을 기준으로 검증된다.
+
+흐름은 다음과 같다.
+
+```txt
+프론트 요청
+  ↓
+ValidationPipe
+  ↓
+CreateUserDto 규칙 검사
+  ↓
+검증 통과
+  ↓
+UsersController 실행
+  ↓
+UsersService 실행
+```
+
+즉, DTO는 단순히 TypeScript 타입을 적어두는 파일이 아니라, 실제 요청 데이터를 검사하는 기준이 된다.
+
+---
+
+## 3. `CreateUserDto`의 전체 구조
+
+`CreateUserDto`의 구조를 단순화하면 다음과 같다.
+
+```ts
+export class CreateUserDto {
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  password?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsOptional()
+  @IsPhoneNumber('KR')
+  phoneNumber?: string;
+
+  @IsEnum(AuthProvider)
+  @IsOptional()
+  provider?: AuthProvider = AuthProvider.GUEST;
+
+  @IsString()
+  @IsOptional()
+  providerId?: string;
+
+  @IsEnum(Gender)
+  @IsOptional()
+  gender?: Gender;
+
+  @IsString()
+  @IsOptional()
+  schoolYear?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  privacyAccept?: boolean = false;
+
+  @IsBoolean()
+  @IsOptional()
+  marketingAccept?: boolean = false;
+}
+```
+
+이 코드에서 중요한 것은 `@IsEmail()`, `@IsString()`, `@IsOptional()` 같은 데코레이터다.
+
+이 데코레이터들은 `class-validator`에서 제공하는 검증 규칙이다.
+
+---
+
+## 4. class-validator 데코레이터 이해하기
+
+DTO에서는 `class-validator`의 데코레이터를 사용한다.
+
+예를 들면 다음과 같다.
+
+```ts
+@IsEmail()
+@IsString()
+@IsOptional()
+@IsNotEmpty()
+@IsEnum()
+@IsBoolean()
+@IsPhoneNumber()
+```
+
+각각의 의미는 다음처럼 이해했다.
+
+```txt
+@IsEmail()       → 이메일 형식인지 검사
+@IsString()      → 문자열인지 검사
+@IsOptional()    → 값이 없어도 허용
+@IsNotEmpty()    → 비어 있으면 안 됨
+@IsEnum()        → enum에 있는 값만 허용
+@IsBoolean()     → true/false 값인지 검사
+@IsPhoneNumber() → 전화번호 형식인지 검사
+```
+
+이 데코레이터들은 직접 실행하는 함수라기보다, `ValidationPipe`가 읽어서 요청 데이터를 검사하는 규칙에 가깝다.
+
+---
+
+## 5. email 필드
+
+email 필드는 다음과 같은 구조다.
+
+```ts
+@IsEmail({}, { message: '이메일 형식이 올바르지 않습니다.' })
+@IsOptional()
+email?: string;
+```
+
+이 필드는 없어도 된다.
+
+```ts
+@IsOptional()
+```
+
+하지만 값이 있다면 이메일 형식이어야 한다.
+
+```ts
+@IsEmail()
+```
+
+즉, 정리하면 다음과 같다.
+
+```txt
+email은 없어도 된다.
+하지만 값이 있다면 이메일 형식이어야 한다.
+```
+
+예를 들어 이런 값은 통과할 수 있다.
+
+```json
+{
+  "email": "test@example.com"
+}
+```
+
+하지만 이런 값은 실패할 수 있다.
+
+```json
+{
+  "email": "이메일아님"
+}
+```
+
+email이 optional인 이유는 게스트 사용자 흐름 때문이다.
+
+게스트 사용자는 이메일 없이 이름과 전화번호만으로 서비스를 이용할 수 있기 때문에, email을 필수값으로 두지 않았다.
+
+---
+
+## 6. password 필드
+
+password 필드는 다음과 같다.
+
+```ts
+@IsString()
+@IsOptional()
+password?: string;
+```
+
+비밀번호는 값이 있다면 문자열이어야 한다.
+
+```ts
+@IsString()
+```
+
+하지만 없어도 된다.
+
+```ts
+@IsOptional()
+```
+
+처음에는 유저를 생성하는데 password가 없어도 된다는 점이 어색하게 느껴질 수 있다.
+
+하지만 모든 사용자가 로컬 비밀번호를 가지는 것은 아니다.
+
+```txt
+일반 이메일 회원가입 → password 있음
+게스트 사용자 → password 없을 수 있음
+소셜 로그인 사용자 → password 없을 수 있음
+```
+
+그래서 DTO에서도 password를 optional로 두었다.
+
+다만 password가 실제로 들어온다면, 이전 글에서 봤던 것처럼 `UsersService`에서 bcrypt로 해시한 뒤 저장해야 한다.
+
+---
+
+## 7. name 필드
+
+name 필드는 다음과 같다.
+
+```ts
+@IsString()
+@IsNotEmpty({ message: '이름은 필수 입력 항목입니다.' })
+name: string;
+```
+
+email이나 password와 다르게 `?`가 없다.
+
+```ts
+name: string;
+```
+
+그리고 `@IsOptional()`도 없다.
+
+즉, name은 필수값이다.
+
+또한 `@IsNotEmpty()`가 있기 때문에 빈 문자열도 허용되지 않는다.
+
+```json
+{
+  "name": ""
+}
+```
+
+이런 요청은 실패할 수 있다.
+
+정리하면 다음과 같다.
+
+```txt
+name은 반드시 있어야 한다.
+문자열이어야 한다.
+빈 문자열이면 안 된다.
+```
+
+---
+
+## 8. phoneNumber 필드
+
+phoneNumber 필드는 다음과 같다.
+
+```ts
+@IsString()
+@IsOptional()
+@IsPhoneNumber('KR', { message: '올바른 한국 전화번호 형식이 아닙니다.' })
+phoneNumber?: string;
+```
+
+전화번호는 숫자처럼 보이지만 문자열로 받는 것이 좋다.
+
+예를 들어 한국 전화번호는 앞자리에 `0`이 들어간다.
+
+```txt
+01012345678
+```
+
+이 값을 숫자로 다루면 앞의 `0`이 사라질 수 있다.
+
+그래서 전화번호는 보통 문자열로 받는다.
+
+```json
+{
+  "phoneNumber": "01012345678"
+}
+```
+
+여기서는 `@IsPhoneNumber('KR')`를 사용해서 한국 전화번호 형식인지도 검사한다.
+
+정리하면 다음과 같다.
+
+```txt
+phoneNumber는 없어도 된다.
+하지만 값이 있다면 문자열이고, 한국 전화번호 형식이어야 한다.
+```
+
+다만 게스트 결과 조회에서는 이름과 전화번호를 기준으로 유저를 찾고 있기 때문에, 게스트 플로우에서는 사실상 phoneNumber가 필요할 수 있다.
+
+DTO에서는 여러 생성 상황을 고려해 optional로 두고, 실제 플로우별 필수 여부는 별도로 판단해야 한다.
+
+---
+
+## 9. provider 필드
+
+provider 필드는 사용자가 어떤 방식으로 들어왔는지를 나타낸다.
+
+```ts
+@IsEnum(AuthProvider)
+@IsOptional()
+provider?: AuthProvider = AuthProvider.GUEST;
+```
+
+`@IsEnum(AuthProvider)`는 `AuthProvider` enum에 정의된 값만 허용한다.
+
+예를 들어 가능한 값은 다음과 같은 형태다.
+
+```txt
+LOCAL
+KAKAO
+NAVER
+GOOGLE
+GUEST
+```
+
+즉, 이런 요청은 가능하다.
+
+```json
+{
+  "provider": "LOCAL"
+}
+```
+
+```json
+{
+  "provider": "GUEST"
+}
+```
+
+하지만 enum에 없는 값은 허용되지 않는다.
+
+```json
+{
+  "provider": "EMAIL"
+}
+```
+
+또한 provider는 optional이고, 기본값은 `GUEST`로 설정되어 있다.
+
+```ts
+provider?: AuthProvider = AuthProvider.GUEST;
+```
+
+즉, provider를 보내지 않으면 기본적으로 게스트 사용자로 처리하려는 의도가 있다.
+
+이 값은 `UsersService`의 role 결정 로직과도 연결된다.
+
+```ts
+const role = createUserDto.provider === 'GUEST'
+  ? Role.GUEST
+  : Role.USER;
+```
+
+흐름은 다음과 같다.
+
+```txt
+CreateUserDto.provider
+  ↓
+UsersService에서 provider 확인
+  ↓
+role 결정
+  ↓
+DB 저장
+```
+
+---
+
+## 10. providerId 필드
+
+providerId는 소셜 로그인과 연결될 수 있는 필드다.
+
+```ts
+@IsString()
+@IsOptional()
+providerId?: string;
+```
+
+예를 들어 카카오 로그인을 붙인다면 카카오에서 사용자 고유 ID를 내려줄 수 있다.
+
+그 값을 우리 서비스 DB에 저장할 때 providerId를 사용할 수 있다.
+
+```txt
+provider   = KAKAO
+providerId = 카카오에서 내려준 사용자 고유 ID
+```
+
+현재 이메일 로그인이나 게스트 흐름만 사용한다면 당장 중요하지 않을 수 있지만, 소셜 로그인 확장을 고려한 필드로 볼 수 있다.
+
+---
+
+## 11. gender 필드
+
+gender 필드는 성별 enum 값이다.
+
+```ts
+@IsEnum(Gender)
+@IsOptional()
+gender?: Gender;
+```
+
+`@IsEnum(Gender)`를 사용했기 때문에 `Gender` enum에 있는 값만 허용된다.
+
+예를 들어 enum 값이 다음과 같다면:
+
+```txt
+MALE
+FEMALE
+```
+
+이런 요청은 가능하다.
+
+```json
+{
+  "gender": "MALE"
+}
+```
+
+```json
+{
+  "gender": "FEMALE"
+}
+```
+
+하지만 이런 요청은 실패할 수 있다.
+
+```json
+{
+  "gender": "남자"
+}
+```
+
+프론트 화면에서는 “남자”, “여자”로 보여주더라도, 백엔드로 보낼 때는 enum 값에 맞춰 보내야 한다.
+
+```txt
+화면 표시값과 서버 저장값은 다를 수 있다.
+```
+
+이 부분은 프론트와 백엔드가 미리 맞춰야 하는 데이터 계약이다.
+
+---
+
+## 12. schoolYear 필드
+
+schoolYear는 학년 또는 사용자 구분 정보를 담는 필드다.
+
+```ts
+@IsString()
+@IsOptional()
+schoolYear?: string;
+```
+
+값이 있다면 문자열이어야 하고, 없어도 된다.
+
+예를 들어 이런 값이 들어올 수 있다.
+
+```json
+{
+  "schoolYear": "중3"
+}
+```
+
+다만 현재는 단순히 문자열인지 여부만 검사한다.
+
+그래서 문자열이라면 이런 값도 통과할 수 있다.
+
+```json
+{
+  "schoolYear": "아무값"
+}
+```
+
+나중에 더 엄격하게 제한하고 싶다면 enum이나 `@IsIn()` 같은 방식을 사용할 수 있다.
+
+예를 들어 허용값을 명확히 정하고 싶다면 이런 방향을 고려할 수 있다.
+
+```txt
+중1
+중2
+중3
+기타
+```
+
+현재는 유연하게 열어둔 구조라고 이해했다.
+
+---
+
+## 13. privacyAccept 필드
+
+privacyAccept는 개인정보 처리 동의 여부를 나타낸다.
+
+```ts
+@IsBoolean()
+@IsOptional()
+privacyAccept?: boolean = false;
+```
+
+값이 있다면 boolean이어야 한다.
+
+```json
+{
+  "privacyAccept": true
+}
+```
+
+또는:
+
+```json
+{
+  "privacyAccept": false
+}
+```
+
+하지만 이런 값은 문자열이다.
+
+```json
+{
+  "privacyAccept": "true"
+}
+```
+
+프론트에서 `"true"`라는 문자열로 보내면 boolean 검증에서 문제가 될 수 있다.
+
+따라서 프론트에서는 실제 boolean 값으로 보내야 한다.
+
+```ts
+privacyAccept: true
+```
+
+또한 기본값은 false다.
+
+```ts
+privacyAccept?: boolean = false;
+```
+
+즉, 명시적으로 동의하지 않았다면 false로 처리하려는 의도다.
+
+다만 실제 서비스에서 개인정보 동의가 필수라면, 단순히 optional로 둘 게 아니라 반드시 true인지 확인하는 검증이 필요할 수 있다.
+
+현재 구조는 다음과 같다.
+
+```txt
+privacyAccept가 없어도 허용된다.
+값이 있다면 boolean이어야 한다.
+값이 없으면 기본값은 false다.
+```
+
+운영 서비스에서는 개인정보 동의가 필요한 흐름에서 이 값이 반드시 true인지 별도로 확인해야 한다.
+
+---
+
+## 14. marketingAccept 필드
+
+marketingAccept는 마케팅 수신 동의 여부다.
+
+```ts
+@IsBoolean()
+@IsOptional()
+marketingAccept?: boolean = false;
+```
+
+privacyAccept와 비슷하지만 의미는 다르다.
+
+```txt
+privacyAccept   → 개인정보 처리 동의
+marketingAccept → 마케팅 정보 수신 동의
+```
+
+마케팅 수신 동의는 보통 선택값이다.
+
+그래서 optional로 두고, 값이 없으면 false를 기본값으로 두는 것이 자연스럽다.
+
+정리하면 다음과 같다.
+
+```txt
+marketingAccept는 없어도 된다.
+값이 있다면 boolean이어야 한다.
+값이 없으면 기본값은 false다.
+```
+
+---
+
+## 15. optional과 required 구분하기
+
+DTO를 볼 때 중요한 기준은 어떤 필드가 필수값이고, 어떤 필드가 선택값인지 구분하는 것이다.
+
+선택값은 보통 다음처럼 표시된다.
+
+```ts
+@IsOptional()
+email?: string;
+```
+
+여기에는 두 가지 힌트가 있다.
+
+```txt
+@IsOptional() → 없어도 된다.
+?             → TypeScript 기준으로 선택값이다.
+```
+
+반대로 필수값은 이런 형태다.
+
+```ts
+@IsString()
+@IsNotEmpty()
+name: string;
+```
+
+여기에는 `@IsOptional()`이 없고, `?`도 없다.
+
+현재 `CreateUserDto`에서 명확한 필수값은 `name`이다.
+
+```ts
+name: string;
+```
+
+즉, 게스트 사용자든 일반 사용자든 이름은 반드시 보내야 하는 구조다.
+
+---
+
+## 16. `UpdateUserDto`는 수정 요청을 위한 DTO다
+
+이제 수정용 DTO를 보자.
+
+구조는 매우 짧다.
+
+```ts
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateUserDto } from './create-user.dto';
+
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
+```
+
+처음 보면 너무 짧아서 무슨 역할인지 헷갈릴 수 있다.
+
+하지만 이 코드는 중요한 의미를 가진다.
+
+```txt
+CreateUserDto의 필드와 검증 규칙을 재사용하되,
+모든 필드를 optional로 바꾼 UpdateUserDto를 만든다.
+```
+
+수정 요청에서는 모든 값을 다 보낼 필요가 없다.
+
+예를 들어 이름만 수정할 수 있다.
+
+```json
+{
+  "name": "수정된 이름"
+}
+```
+
+또는 전화번호만 수정할 수도 있다.
+
+```json
+{
+  "phoneNumber": "01099998888"
+}
+```
+
+그래서 수정 DTO에서는 모든 필드가 선택값이 되는 것이 자연스럽다.
+
+그 역할을 해주는 것이 `PartialType`이다.
+
+---
+
+## 17. `PartialType` 이해하기
+
+`PartialType`은 기존 DTO를 기반으로 새로운 DTO를 만들 때 사용한다.
+
+```ts
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
+```
+
+이 코드는 다음과 비슷한 의미다.
+
+```txt
+CreateUserDto에 있는 모든 필드를 가져온다.
+단, 수정 요청에 맞게 전부 optional로 바꾼다.
+```
+
+예를 들어 `CreateUserDto`에서 name은 필수였다.
+
+```ts
+@IsString()
+@IsNotEmpty()
+name: string;
+```
+
+하지만 `UpdateUserDto`에서는 `PartialType` 때문에 name도 선택값이 된다.
+
+즉, 수정 요청에서 name을 보내지 않아도 된다.
+
+```json
+{
+  "phoneNumber": "01099998888"
+}
+```
+
+이렇게 전화번호만 보내도 수정 요청으로 사용할 수 있다.
+
+---
+
+## 18. UpdateUserDto에서 주의할 점
+
+`UpdateUserDto`는 편하지만 주의할 점도 있다.
+
+`CreateUserDto`에는 password가 있다.
+
+```ts
+@IsString()
+@IsOptional()
+password?: string;
+```
+
+그리고 `UpdateUserDto`는 `CreateUserDto`를 기반으로 만들어진다.
+
+즉, `UpdateUserDto`에도 password가 포함된다.
+
+문제는 `UsersService.update()`가 단순히 다음처럼 되어 있을 경우다.
+
+```ts
+async update(id: string, updateUserDto: UpdateUserDto) {
+  return this.prisma.user.update({
+    where: { id },
+    data: updateUserDto,
+  });
+}
+```
+
+이 상태에서 프론트가 다음 요청을 보내면:
+
+```json
+{
+  "password": "new-password"
+}
+```
+
+password가 bcrypt 해시 없이 그대로 저장될 위험이 있다.
+
+`create()`에서는 password를 해시했지만, update에서는 따로 처리하지 않았다면 문제가 될 수 있다.
+
+그래서 나중에 비밀번호 변경 기능을 열 경우에는 update 로직에서도 password를 별도로 처리해야 한다.
+
+흐름은 다음과 같을 수 있다.
+
+```txt
+updateUserDto에 password가 있는지 확인
+  ↓
+password가 있으면 bcrypt.hash() 실행
+  ↓
+해시된 password로 data 재구성
+  ↓
+DB 업데이트
+```
+
+DTO와 Service는 따로 떨어져 있는 것처럼 보이지만, 실제로는 함께 봐야 한다는 걸 느꼈다.
+
+DTO는 어떤 값이 들어올 수 있는지 정하고, Service는 그 값을 어떻게 처리할지 정하기 때문이다.
+
+---
+
+## 19. DTO에 없는 필드가 들어오면 어떻게 될까?
+
+이전에 설문 기능을 수정하면서 이런 형태의 에러를 본 적이 있었다.
+
+```json
+{
+  "message": [
+    "property someField should not exist"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+이 원리는 사용자 DTO에서도 동일하다.
+
+`main.ts`에는 다음 설정이 있었다.
+
+```ts
+forbidNonWhitelisted: true
+```
+
+이 설정이 켜져 있으면 DTO에 없는 필드가 요청 body에 들어왔을 때 서버가 요청을 거절한다.
+
+예를 들어 `CreateUserDto`에 없는 `role`을 프론트에서 보낸다고 해보자.
+
+```json
+{
+  "name": "사용자",
+  "role": "ADMIN"
+}
+```
+
+그러면 서버는 요청을 거부할 수 있다.
+
+```json
+{
+  "message": [
+    "property role should not exist"
+  ],
+  "error": "Bad Request",
+  "statusCode": 400
+}
+```
+
+이건 보안적으로 중요하다.
+
+사용자가 회원가입 요청에서 마음대로 role을 보내서 관리자 권한을 얻으면 안 되기 때문이다.
+
+```json
+{
+  "role": "ADMIN"
+}
+```
+
+DTO와 ValidationPipe를 사용하면 이런 값을 서버 초입에서 막을 수 있다.
+
+---
+
+## 20. DTO 필드별 규칙 정리
+
+`CreateUserDto`의 필드별 규칙을 정리하면 다음과 같다.
+
+```txt
+email
+→ 없어도 된다.
+→ 값이 있다면 이메일 형식이어야 한다.
+
+password
+→ 없어도 된다.
+→ 값이 있다면 문자열이어야 한다.
+
+name
+→ 필수값이다.
+→ 문자열이어야 한다.
+→ 빈 문자열이면 안 된다.
+
+phoneNumber
+→ 없어도 된다.
+→ 값이 있다면 문자열이어야 한다.
+→ 한국 전화번호 형식이어야 한다.
+
+provider
+→ 없어도 된다.
+→ 값이 있다면 AuthProvider enum 값이어야 한다.
+→ 기본값은 GUEST다.
+
+providerId
+→ 없어도 된다.
+→ 값이 있다면 문자열이어야 한다.
+
+gender
+→ 없어도 된다.
+→ 값이 있다면 Gender enum 값이어야 한다.
+
+schoolYear
+→ 없어도 된다.
+→ 값이 있다면 문자열이어야 한다.
+
+privacyAccept
+→ 없어도 된다.
+→ 값이 있다면 boolean이어야 한다.
+→ 기본값은 false다.
+
+marketingAccept
+→ 없어도 된다.
+→ 값이 있다면 boolean이어야 한다.
+→ 기본값은 false다.
+```
+
+DTO는 단순히 필드 이름을 모아둔 파일이 아니라, 요청 데이터에 대한 백엔드의 기준이다.
+
+---
+
+## 정리
+
+이번 글에서는 `CreateUserDto`와 `UpdateUserDto`를 기준으로 사용자 요청 데이터가 어떻게 검증되는지 정리했다.
+
+가장 중요한 흐름은 다음과 같다.
+
+```txt
+프론트 요청
+  ↓
+ValidationPipe
+  ↓
+DTO 규칙 검사
+  ↓
+Controller 실행
+  ↓
+Service 실행
+```
+
+`CreateUserDto`는 유저 생성 요청의 규칙을 정의한다.
+
+```txt
+어떤 필드를 받을 것인지
+필수값은 무엇인지
+선택값은 무엇인지
+각 필드는 어떤 형식이어야 하는지
+```
+
+`UpdateUserDto`는 `CreateUserDto`를 기반으로 하되, 모든 필드를 선택값으로 바꾼 수정용 DTO다.
+
+```ts
+export class UpdateUserDto extends PartialType(CreateUserDto) {}
+```
+
+DTO는 단순한 타입 파일이 아니라, 백엔드로 들어오는 데이터를 막아주는 1차 검문소다.
+
+특히 `ValidationPipe`의 `whitelist`, `forbidNonWhitelisted` 설정과 함께 사용하면 DTO에 없는 필드가 들어오는 것을 막을 수 있다.
+
+```txt
+whitelist
+→ DTO에 정의된 필드만 허용한다.
+
+forbidNonWhitelisted
+→ DTO에 없는 필드가 들어오면 요청을 거절한다.
+```
+
+다만 DTO는 요청 데이터의 형식만 검증한다.
+
+비밀번호를 해시해야 하는지, 개인정보 동의가 반드시 true여야 하는지, 유저가 어떤 권한을 가져야 하는지는 Service나 별도의 정책 로직에서 함께 처리해야 한다.
+
+즉, DTO와 Service는 역할이 다르다.
+
+```txt
+DTO
+→ 들어오는 데이터의 형식을 검증한다.
+
+Service
+→ 검증된 데이터를 바탕으로 실제 비즈니스 로직을 처리한다.
+```
